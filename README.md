@@ -38,8 +38,8 @@ O ambiente sobe os seguintes serviços de forma interconectada:
 
 1. Clone este repositório:
    ```bash
-   git clone <SUA_URL_DO_GIT>
-   cd <NOME_DO_SEU_REPO>
+   git clone https://github.com/DevMiguelPinheiro/faaast-opcua-historian.git
+   cd faaast-opcua-historian
    ```
 
 2. Certifique-se de que os seus arquivos de recurso (`config.json` e arquivos `.aasx`) estão na pasta `./my-resources`.
@@ -156,8 +156,8 @@ The environment spins up the following interconnected services:
 
 1. Clone this repository:
    ```bash
-   git clone <YOUR_GIT_URL>
-   cd <YOUR_REPO_NAME>
+   git clone https://github.com/DevMiguelPinheiro/faaast-opcua-historian.git
+   cd faaast-opcua-historian
    ```
 
 2. Make sure your resource files (`config.json` and `.aasx` files) are placed in the `./my-resources` folder.
