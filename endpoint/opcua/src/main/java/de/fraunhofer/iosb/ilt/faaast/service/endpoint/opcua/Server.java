@@ -36,6 +36,8 @@ import com.prosysopc.ua.stack.transport.security.HttpsSecurityPolicy;
 import com.prosysopc.ua.stack.transport.security.SecurityMode;
 import com.prosysopc.ua.types.opcua.server.BuildInfoTypeNode;
 import com.prosysopc.ua.types.opcua.server.ServerCapabilitiesTypeNode;
+import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.history.AasServiceHistoryManager;
+import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.history.OpcUaHistoryStore;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.listener.AasCertificateValidationListener;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.listener.AasServiceIoManagerListener;
 import de.fraunhofer.iosb.ilt.faaast.service.util.Ensure;
@@ -73,6 +75,7 @@ public class Server {
 
     private UaServer uaServer;
     private boolean running;
+    private OpcUaHistoryStore historyStore;
 
     private final DefaultCertificateValidatorListener validationListener = new AasCertificateValidationListener();
     private final DefaultCertificateValidatorListener userCertificateValidationListener = new AasCertificateValidationListener();
@@ -163,6 +166,12 @@ public class Server {
         serverCapabilities.setMaxQueryContinuationPoints(UnsignedShort.MAX_VALUE);
         serverCapabilities.setMaxHistoryContinuationPoints(UnsignedShort.MAX_VALUE);
 
+        if (config.isHistorizingEnabled()) {
+            historyStore = new OpcUaHistoryStore(config);
+            uaServer.setHistoryManager(new AasServiceHistoryManager(historyStore));
+            LOGGER.info("OPC UA historizing enabled, HistoryManager registered.");
+        }
+
         createAddressSpace();
 
         uaServer.start();
@@ -236,6 +245,9 @@ public class Server {
     public void shutdown(int secondsTillShutdown) {
         running = false;
         uaServer.shutdown(secondsTillShutdown, new LocalizedText("Server stopped", Locale.ENGLISH));
+        if (historyStore != null) {
+            historyStore.close();
+        }
     }
 
 
@@ -301,6 +313,9 @@ public class Server {
         try {
             loadI4AasNodes();
             AasServiceNodeManager aasNodeManager = new AasServiceNodeManager(uaServer, AasServiceNodeManager.NAMESPACE_URI, aasEnvironment, endpoint);
+            if (historyStore != null) {
+                aasNodeManager.setHistoryStore(historyStore);
+            }
             aasNodeManager.getIoManager().addListeners(new AasServiceIoManagerListener(endpoint, aasNodeManager));
         }
         catch (Exception ex) {

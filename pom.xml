@@ -38,6 +38,7 @@
         <module>core</module>
         <module>model</module>
         <module>endpoint/http</module>
+        <module>endpoint/opcua-milo</module>
         <module>messagebus/cloudevents</module>
         <module>messagebus/internal</module>
         <module>messagebus/mqtt</module>

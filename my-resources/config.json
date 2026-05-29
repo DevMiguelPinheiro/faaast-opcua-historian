@@ -1,0 +1,44 @@
+{
+    "core": {
+        "requestHandlerThreadPoolSize": 2
+    },
+    "endpoints": [
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.http.HttpEndpoint",
+            "port": 8080
+        },
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcuamilo.MiloOpcUaEndpoint",
+            "port": 4840,
+            "serverName": "faaast",
+            "historizingEnabled": true,
+            "historyMongoConnectionString": "mongodb://mongoAdmin:mongoPass@mongodb:27017/?authSource=admin",
+            "historyMongoDatabase": "faaast_history",
+            "historyMongoCollection": "opcua_history",
+            "historyMaxEntries": 10000,
+            "historyMaxAgeDays": 30,
+            "mqttEnabled": true,
+            "mqttBrokerUrl": "tcp://mosquitto:1883",
+            "mqttMappings": [
+                { "topic": "fishtank/TankEnviromentalConditions/WaterTemperature", "submodelId": "TankEnviromentalConditions", "idShort": "WaterTemperature" },
+                { "topic": "fishtank/TankEnviromentalConditions/OxygenLevel",      "submodelId": "TankEnviromentalConditions", "idShort": "OxygenLevel" },
+                { "topic": "fishtank/TankEnviromentalConditions/PHLevel",          "submodelId": "TankEnviromentalConditions", "idShort": "PHLevel" },
+                { "topic": "fishtank/TankEnviromentalConditions/AmmoniaLevel",     "submodelId": "TankEnviromentalConditions", "idShort": "AmmoniaLevel" },
+                { "topic": "fishtank/TankEnviromentalConditions/Turbidity",        "submodelId": "TankEnviromentalConditions", "idShort": "Turbidity" },
+                { "topic": "fishtank/TankEnviromentalConditions/LastUpdateTimestamp", "submodelId": "TankEnviromentalConditions", "idShort": "LastUpdateTimestamp" },
+                { "topic": "fishtank/FishBiometrics/AverageLength",  "submodelId": "FishBiometrics", "idShort": "AverageLength" },
+                { "topic": "fishtank/FishBiometrics/AverageWeight",  "submodelId": "FishBiometrics", "idShort": "AverageWeight" },
+                { "topic": "fishtank/FishBiometrics/GrowthRate",     "submodelId": "FishBiometrics", "idShort": "GrowthRate" },
+                { "topic": "fishtank/FishFeeding/FeedAmountPerCycle", "submodelId": "FishFeeding", "idShort": "FeedAmountPerCycle" },
+                { "topic": "fishtank/FishFeeding/LastFeedingTime",    "submodelId": "FishFeeding", "idShort": "LastFeedingTime" }
+            ]
+        }
+    ],
+    "persistence": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.persistence.memory.PersistenceInMemory",
+        "initialModelFile": "/app/resources/FishTankAAS.aasx"
+    },
+    "messageBus": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.messagebus.internal.MessageBusInternal"
+    }
+}

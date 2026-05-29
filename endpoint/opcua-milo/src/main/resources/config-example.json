@@ -1,0 +1,24 @@
+{
+  "core": {
+    "requestHandlerThreadPoolSize": 2
+  },
+  "endpoints": [
+    {
+      "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcuamilo.MiloOpcUaEndpoint",
+      "port": 4840,
+      "serverName": "faaast",
+      "historizingEnabled": true,
+      "historyMongoConnectionString": "mongodb://mongoAdmin:mongoPass@localhost:27017/?authSource=admin",
+      "historyMongoDatabase": "faaast_history",
+      "historyMongoCollection": "opcua_history",
+      "historyMaxEntries": 10000,
+      "historyMaxAgeDays": 30
+    }
+  ],
+  "persistence": {
+    "@class": "de.fraunhofer.iosb.ilt.faaast.service.persistence.memory.PersistenceInMemory"
+  },
+  "messageBus": {
+    "@class": "de.fraunhofer.iosb.ilt.faaast.service.messagebus.internal.MessageBusInternal"
+  }
+}

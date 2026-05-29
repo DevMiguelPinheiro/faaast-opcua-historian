@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    command: mosquitto -c /mosquitto-no-auth.conf
+    volumes:
+      - mosquitto_data:/mosquitto/data
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME:  [USER]
+      MONGO_INITDB_ROOT_PASSWORD: [PASSWORD]
+    volumes:
+      - mongo_data:/data/db
+
+  faaast:
+    build:
+      context: ./starter
+      dockerfile: Dockerfile
+      args:
+        ARTIFACT_FILE: starter-1.4.0-SNAPSHOT.jar
+    container_name: faaast
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - mosquitto
+    ports:
+      - "8080:8080"   # HTTP REST API
+      - "4840:4840"   # OPC UA
+    volumes:
+      - ./my-resources:/app/resources
+    environment:
+      - faaast_config=/app/resources/config.json
+      - faaast_model=/app/resources/FishTankAAS.aasx
+
+volumes:
+  mongo_data:
+  mosquitto_data:

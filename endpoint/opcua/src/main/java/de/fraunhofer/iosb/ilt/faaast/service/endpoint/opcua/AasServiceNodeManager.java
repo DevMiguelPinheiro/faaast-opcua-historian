@@ -24,9 +24,13 @@ import com.prosysopc.ua.nodes.UaObject;
 import com.prosysopc.ua.server.MethodManagerUaNode;
 import com.prosysopc.ua.server.NodeManagerUaNode;
 import com.prosysopc.ua.server.UaServer;
+import com.prosysopc.ua.stack.builtintypes.DataValue;
+import com.prosysopc.ua.stack.builtintypes.DateTime;
 import com.prosysopc.ua.stack.builtintypes.LocalizedText;
 import com.prosysopc.ua.stack.builtintypes.NodeId;
 import com.prosysopc.ua.stack.builtintypes.QualifiedName;
+import com.prosysopc.ua.stack.builtintypes.StatusCode;
+import com.prosysopc.ua.stack.builtintypes.Variant;
 import com.prosysopc.ua.stack.common.ServiceResultException;
 import com.prosysopc.ua.types.opcua.BaseObjectType;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.creator.AssetAdministrationShellCreator;
@@ -38,6 +42,7 @@ import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.creator.SubmodelElem
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.data.ObjectData;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.data.SubmodelElementData;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.helper.AasSubmodelElementHelper;
+import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.history.OpcUaHistoryStore;
 import de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcua.listener.AasServiceMethodManagerListener;
 import de.fraunhofer.iosb.ilt.faaast.service.exception.MessageBusException;
 import de.fraunhofer.iosb.ilt.faaast.service.messagebus.MessageBus;
@@ -52,6 +57,7 @@ import de.fraunhofer.iosb.ilt.faaast.service.model.messagebus.event.change.Eleme
 import de.fraunhofer.iosb.ilt.faaast.service.model.messagebus.event.change.ElementUpdateEventMessage;
 import de.fraunhofer.iosb.ilt.faaast.service.model.messagebus.event.change.ValueChangeEventMessage;
 import de.fraunhofer.iosb.ilt.faaast.service.model.value.ElementValue;
+import de.fraunhofer.iosb.ilt.faaast.service.model.value.PropertyValue;
 import de.fraunhofer.iosb.ilt.faaast.service.util.Ensure;
 import de.fraunhofer.iosb.ilt.faaast.service.util.ReferenceHelper;
 import java.util.ArrayList;
@@ -190,6 +196,17 @@ public class AasServiceNodeManager extends NodeManagerUaNode {
     private int nodeIdCounter;
 
     /**
+     * Optional history store for recording OPC UA historical values. Null when historizing is disabled.
+     */
+    private OpcUaHistoryStore historyStore;
+
+    /**
+     * Reverse map: SubmodelElementIdentifier → value NodeId, used by the history capture pipeline
+     * to resolve the OPC UA NodeId from a ValueChangeEventMessage reference.
+     */
+    private final Map<SubmodelElementIdentifier, NodeId> propertyValueNodeIdMap;
+
+    /**
      * Creates a new instance of AasServiceNodeManager
      *
      * @param server the server in which the node manager is created.
@@ -208,10 +225,32 @@ public class AasServiceNodeManager extends NodeManagerUaNode {
         submodelElementOpcUAMap = new ConcurrentHashMap<>();
         submodelOpcUAMap = new ConcurrentHashMap<>();
         referableMap = new ConcurrentHashMap<>();
+        propertyValueNodeIdMap = new ConcurrentHashMap<>();
 
         messageBus = endpoint.getMessageBus();
         Ensure.requireNonNull(messageBus, "messageBus must not be null");
         subscriptions = new ArrayList<>();
+    }
+
+
+    /**
+     * Sets the history store to use for recording historical values.
+     * Must be called before the address space is created.
+     *
+     * @param store the history store, or null to disable historizing
+     */
+    public void setHistoryStore(OpcUaHistoryStore store) {
+        this.historyStore = store;
+    }
+
+
+    /**
+     * Returns true if historizing is enabled (i.e. a history store is configured).
+     *
+     * @return true when historizing is active
+     */
+    public boolean isHistorizingEnabled() {
+        return historyStore != null;
     }
 
 
@@ -339,6 +378,7 @@ public class AasServiceNodeManager extends NodeManagerUaNode {
         SubscriptionInfo info = SubscriptionInfo.create(ValueChangeEventMessage.class, x -> {
             try {
                 updateSubmodelElementValue(x.getElement(), x.getNewValue(), x.getOldValue());
+                recordHistoricalValue(x.getElement(), x.getNewValue());
             }
             catch (Exception e) {
                 LOG.error("valueChanged Exception", e);
@@ -492,6 +532,34 @@ public class AasServiceNodeManager extends NodeManagerUaNode {
 
 
     /**
+     * Records a historical value for the given element reference, if historizing is enabled
+     * and the element is a Property. Uses the reverse NodeId map for O(1) lookup.
+     *
+     * @param reference reference to the changed element
+     * @param newValue the new element value
+     */
+    private void recordHistoricalValue(Reference reference, ElementValue newValue) {
+        if (historyStore == null || !(newValue instanceof PropertyValue pv)) {
+            return;
+        }
+        SubmodelElementIdentifier identifier = SubmodelElementIdentifier.fromReference(reference);
+        NodeId nodeId = propertyValueNodeIdMap.get(identifier);
+        if (nodeId == null) {
+            return;
+        }
+        try {
+            Object rawValue = pv.getValue() != null ? pv.getValue().getValue() : null;
+            DateTime now = DateTime.currentTime();
+            DataValue dataValue = new DataValue(new Variant(rawValue), StatusCode.GOOD, now, now);
+            historyStore.record(nodeId, dataValue);
+        }
+        catch (Exception e) {
+            LOG.warn("recordHistoricalValue failed for node {}", nodeId, e);
+        }
+    }
+
+
+    /**
      * Unsubscribes from the MessageBus.
      */
     private void unsubscribeMessageBus() {
@@ -597,6 +665,9 @@ public class AasServiceNodeManager extends NodeManagerUaNode {
      */
     public void addSubmodelElementAasMap(NodeId nodeId, SubmodelElementData data) {
         submodelElementAasMap.put(nodeId, data);
+        if (data.getType() == SubmodelElementData.Type.PROPERTY_VALUE && data.getReference() != null) {
+            propertyValueNodeIdMap.put(SubmodelElementIdentifier.fromReference(data.getReference()), nodeId);
+        }
     }
 
 

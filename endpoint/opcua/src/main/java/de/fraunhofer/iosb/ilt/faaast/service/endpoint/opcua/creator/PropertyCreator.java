@@ -90,6 +90,15 @@ public class PropertyCreator extends SubmodelElementCreator {
                 }
             }
 
+            if (nodeManager.isHistorizingEnabled() && prop.getValueNode() != null) {
+                prop.getValueNode().setHistorizing(true);
+                prop.getValueNode().setAccessLevel(
+                        AccessLevelType.of(
+                                AccessLevelType.Options.CurrentRead,
+                                AccessLevelType.Options.CurrentWrite,
+                                AccessLevelType.Options.HistoryRead));
+            }
+
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("addAasProperty: add Property {}, Reference: {}", nid, ReferenceHelper.toString(ref));
             }

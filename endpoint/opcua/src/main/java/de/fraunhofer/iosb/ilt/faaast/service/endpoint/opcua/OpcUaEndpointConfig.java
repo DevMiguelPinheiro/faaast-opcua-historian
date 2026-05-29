@@ -34,6 +34,8 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
     private static final int DEFAULT_SECONDS_SHUTDOWN = 2;
     private static final String DEFAULT_SERVER_CERT_PATH = "PKI/CA";
     private static final String DEFAULT_USER_CERT_PATH = "USERS_PKI/CA";
+    private static final String DEFAULT_HISTORY_DATABASE = "faaast_history";
+    private static final String DEFAULT_HISTORY_COLLECTION = "opcua_history";
     private int tcpPort;
     private int secondsTillShutdown;
     private Map<String, String> userMap;
@@ -42,6 +44,12 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
     private String userCertificateBasePath;
     private Set<SecurityPolicy> supportedSecurityPolicies;
     private Set<UserTokenType> supportedAuthentications;
+    private boolean historizingEnabled;
+    private String historyMongoConnectionString;
+    private String historyMongoDatabase;
+    private String historyMongoCollection;
+    private int historyMaxEntries;
+    private int historyMaxAgeDays;
 
     public OpcUaEndpointConfig() {
         this.tcpPort = DEFAULT_PORT;
@@ -53,6 +61,11 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
         this.supportedSecurityPolicies = new HashSet<>(SecurityPolicy.ALL_SECURE_104);
         this.supportedSecurityPolicies.add(SecurityPolicy.NONE);
         this.supportedAuthentications = new HashSet<>(Arrays.asList(UserTokenType.Anonymous));
+        this.historizingEnabled = false;
+        this.historyMongoDatabase = DEFAULT_HISTORY_DATABASE;
+        this.historyMongoCollection = DEFAULT_HISTORY_COLLECTION;
+        this.historyMaxEntries = 10_000;
+        this.historyMaxAgeDays = 30;
     }
 
 
@@ -73,7 +86,13 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
                 && Objects.equals(serverCertificateBasePath, that.serverCertificateBasePath)
                 && Objects.equals(userCertificateBasePath, that.userCertificateBasePath)
                 && Objects.equals(supportedSecurityPolicies, that.supportedSecurityPolicies)
-                && Objects.equals(supportedAuthentications, that.supportedAuthentications);
+                && Objects.equals(supportedAuthentications, that.supportedAuthentications)
+                && Objects.equals(historizingEnabled, that.historizingEnabled)
+                && Objects.equals(historyMongoConnectionString, that.historyMongoConnectionString)
+                && Objects.equals(historyMongoDatabase, that.historyMongoDatabase)
+                && Objects.equals(historyMongoCollection, that.historyMongoCollection)
+                && Objects.equals(historyMaxEntries, that.historyMaxEntries)
+                && Objects.equals(historyMaxAgeDays, that.historyMaxAgeDays);
     }
 
 
@@ -88,7 +107,13 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
                 serverCertificateBasePath,
                 userCertificateBasePath,
                 supportedSecurityPolicies,
-                supportedAuthentications);
+                supportedAuthentications,
+                historizingEnabled,
+                historyMongoConnectionString,
+                historyMongoDatabase,
+                historyMongoCollection,
+                historyMaxEntries,
+                historyMaxAgeDays);
     }
 
 
@@ -254,6 +279,66 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
     }
 
 
+    public boolean isHistorizingEnabled() {
+        return historizingEnabled;
+    }
+
+
+    public void setHistorizingEnabled(boolean value) {
+        historizingEnabled = value;
+    }
+
+
+    public String getHistoryMongoConnectionString() {
+        return historyMongoConnectionString;
+    }
+
+
+    public void setHistoryMongoConnectionString(String value) {
+        historyMongoConnectionString = value;
+    }
+
+
+    public String getHistoryMongoDatabase() {
+        return historyMongoDatabase;
+    }
+
+
+    public void setHistoryMongoDatabase(String value) {
+        historyMongoDatabase = value;
+    }
+
+
+    public String getHistoryMongoCollection() {
+        return historyMongoCollection;
+    }
+
+
+    public void setHistoryMongoCollection(String value) {
+        historyMongoCollection = value;
+    }
+
+
+    public int getHistoryMaxEntries() {
+        return historyMaxEntries;
+    }
+
+
+    public void setHistoryMaxEntries(int value) {
+        historyMaxEntries = value;
+    }
+
+
+    public int getHistoryMaxAgeDays() {
+        return historyMaxAgeDays;
+    }
+
+
+    public void setHistoryMaxAgeDays(int value) {
+        historyMaxAgeDays = value;
+    }
+
+
     public static Builder builder() {
         return new Builder();
     }
@@ -322,6 +407,42 @@ public class OpcUaEndpointConfig extends EndpointConfig<OpcUaEndpoint> {
 
         public B supportedAuthentication(UserTokenType value) {
             getBuildingInstance().getSupportedAuthentications().add(value);
+            return getSelf();
+        }
+
+
+        public B historizingEnabled(boolean value) {
+            getBuildingInstance().setHistorizingEnabled(value);
+            return getSelf();
+        }
+
+
+        public B historyMongoConnectionString(String value) {
+            getBuildingInstance().setHistoryMongoConnectionString(value);
+            return getSelf();
+        }
+
+
+        public B historyMongoDatabase(String value) {
+            getBuildingInstance().setHistoryMongoDatabase(value);
+            return getSelf();
+        }
+
+
+        public B historyMongoCollection(String value) {
+            getBuildingInstance().setHistoryMongoCollection(value);
+            return getSelf();
+        }
+
+
+        public B historyMaxEntries(int value) {
+            getBuildingInstance().setHistoryMaxEntries(value);
+            return getSelf();
+        }
+
+
+        public B historyMaxAgeDays(int value) {
+            getBuildingInstance().setHistoryMaxAgeDays(value);
             return getSelf();
         }
     }

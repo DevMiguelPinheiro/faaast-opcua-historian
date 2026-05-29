@@ -1,82 +1,239 @@
-# FA³ST Service [![Build Status](https://github.com/FraunhoferIOSB/FAAAST-Service/workflows/Maven%20Build/badge.svg)](https://github.com/FraunhoferIOSB/FAAAST-Service/actions) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/25f6aafbdb0a4b5e8ba23672ec9411e5)](https://www.codacy.com/gh/FraunhoferIOSB/FAAAST-Service/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FraunhoferIOSB/FAAAST-Service&amp;utm_campaign=Badge_Grade) [![Docker badge](https://img.shields.io/docker/pulls/fraunhoferiosb/faaast-service.svg)](https://hub.docker.com/r/fraunhoferiosb/faaast-service/) [![Documentation Status](https://readthedocs.org/projects/faaast-service/badge/?version=latest)](https://faaast-service.readthedocs.io/en/latest/?badge=latest) <a href="https://sonarcloud.io/summary/new_code?id=FraunhoferIOSB_FAAAST-Service" ><img src="https://sonarcloud.io/images/project_badges/sonarcloud-white.svg" alt="SonarCloud badge" width="105"/></a>
+# FAAAST Digital Twin Gateway (Custom Edition)
 
-![FA³ST Logo Light](./docs/source/images/logo-positiv.png/#gh-light-mode-only "FA³ST Service Logo")
-![FA³ST Logo Dark](./docs/source/images/logo-negativ.png/#gh-dark-mode-only "FA³ST Service Logo")
+*Read this in other languages: [English](#english-version) | [Português](#versão-em-português)*
 
-The **F**raunhofer **A**dvanced **A**sset **A**dministration **S**hell **T**ools (**FA³ST**) Service enables you to create digital twins based on the [Asset Administration Shell (AAS) specification](https://industrialdigitaltwin.org/en/content-hub/aasspecifications) with ease.
-It is an implementation of the re-active or type 2 AAS, which means you can load existing AAS models and interact with them via API.
-The features of FA³ST Service include
+---
 
-- free & open-source (Apache 2.0 license)
-- native Java implementation
-- easily extendable & configurable
-- supports synchronization of the digital twins with existing assets using different protocols
-- can be used as CLI, docker container, or embedded library
+## Versão em Português
 
+Este projeto é uma versão customizada e estendida do [FAAAST-Service](https://github.com/FraunhoferIOSB/FAAAST-Service) (Fraunhofer IOSB), projetada para oferecer uma solução completa de Gêmeos Digitais (Digital Twins) com foco em interoperabilidade industrial, comunicação em tempo real e persistência de dados.
 
-> [!TIP]
-> For more details on FA³ST Service see the [:blue_book: **full documenation**](https://faaast-service.readthedocs.io/).
+A arquitetura foi adaptada para atuar como um gateway inteligente, integrando **MQTT** para mensageria assíncrona, **OPC UA** para automação e controle padronizado, e **MongoDB** para historização e armazenamento de séries temporais das simulações e telemetria.
 
+## Principais Diferenciais e Funcionalidades
 
-## Implemented AAS Specifications
+Diferente do repositório original, esta versão introduz as seguintes melhorias:
 
-- AAS Part 1: Metamodel v3.0 [Specification](https://industrialdigitaltwin.org/wp-content/uploads/2023/06/IDTA-01001-3-0_SpecificationAssetAdministrationShell_Part1_Metamodel.pdf)
-- AAS Part 2: API v3.0.1 [Specification](https://industrialdigitaltwin.org/wp-content/uploads/2023/06/IDTA-01002-3-0_SpecificationAssetAdministrationShell_Part2_API_.pdf), [OpenAPI](https://app.swaggerhub.com/apis/Plattform_i40/Entire-API-Collection/V3.0.1)
-- AAS Part 3a: Data Specification – IEC 61360 v3.0 [Specification](https://industrialdigitaltwin.org/en/wp-content/uploads/sites/2/2024/07/IDTA-01003-a-3-0-2_SpecificationAssetAdministrationShell_Part3a_DataSpecification_IEC613601.pdf)
-- AAS Part 5: Package File Format (AASX) v3.0 [Specification](https://industrialdigitaltwin.org/en/wp-content/uploads/sites/2/2024/06/IDTA-01005-3-0-1_SpecificationAssetAdministrationShell_Part5_AASXPackageFileFormat.pdf)
+*   **Gateway MQTT ↔ OPC UA:** Comunicação bidirecional configurada. O sistema é capaz de assinar tópicos MQTT e mapear essas mensagens diretamente para nós (nodes) do servidor OPC UA.
+*   **Historização de Dados (MongoDB):** Integração com banco de dados MongoDB para salvar o histórico de eventos, telemetria e estados dos Gêmeos Digitais, permitindo análises futuras e auditorias.
+*   **Servidor OPC UA Customizado:** O servidor OPC UA padrão foi substituído/otimizado para suportar conexões mais complexas e garantir maior flexibilidade na exposição dos dados do *Asset Administration Shell (AAS)*.
+*   **Simulação Distribuída:** Estrutura base preparada para orquestração de simulações de múltiplos ativos (como drones ou ambientes de teste) gerenciados via MQTT e OPC UA simultaneamente.
+*   **Ambiente Totalmente Dockerizado:** Orquestração completa do ambiente (Broker, Banco de Dados e FAAAST Service) com um único comando via `docker-compose`.
 
+## Arquitetura do Sistema
 
-## Usage
+O ambiente sobe os seguintes serviços de forma interconectada:
 
-> [!IMPORTANT]
-> At the moment there is no security specification available for the AAS.
-> Therefore FA³ST Service does not implement any security mechanisms.
-> They will be implemented as soon as a security specification is available.
-> We strongly recommend to be careful when using external AAS models or submodels.
+1.  **Mosquitto (Broker MQTT):** Gerencia o tráfego de mensagens assíncronas (ex: telemetria, waypoints de missão). Operando na porta `1883`.
+2.  **MongoDB:** Banco de dados NoSQL utilizado para a historização persistente das informações do AAS. Operando na porta `27017`.
+3.  **FAAAST Service:** O núcleo do *Asset Administration Shell*. Expõe a API REST e o endpoint do servidor OPC UA atualizado. Operando nas portas `8080` (HTTP) e `4840` (OPC UA).
 
-### Download pre-compiled JAR
+## Como Executar o Projeto
 
-<!--start:download-release-->
-[Download latest RELEASE version (1.3.0)](https://repo1.maven.org/maven2/de/fraunhofer/iosb/ilt/faaast/service/starter/1.3.0/starter-1.3.0.jar)<!--end:download-release-->
+### Pré-requisitos
+*   [Docker](https://docs.docker.com/get-docker/)
+*   [Docker Compose](https://docs.docker.com/compose/install/)
 
-<!--start:download-snapshot-->
-[Download latest SNAPSHOT version (1.4.0-SNAPSHOT)](https://purl.archive.org/faaast/service/snapshot/latest)<!--end:download-snapshot-->
+### Passo a Passo
 
-### As Maven Dependency
-```xml
-<dependency>
-	<groupId>de.fraunhofer.iosb.ilt.faaast.service</groupId>
-	<artifactId>starter</artifactId>
-	<version>1.3.0</version>
-</dependency>
+1. Clone este repositório:
+   ```bash
+   git clone <SUA_URL_DO_GIT>
+   cd <NOME_DO_SEU_REPO>
+   ```
+
+2. Certifique-se de que os seus arquivos de recurso (`config.json` e arquivos `.aasx`) estão na pasta `./my-resources`.
+
+3. Inicie a stack utilizando o Docker Compose:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. Verifique os logs para garantir que o gateway e o OPC UA inicializaram corretamente:
+   ```bash
+   docker-compose logs -f faaast
+   ```
+
+### Endpoints Disponíveis
+
+Após a inicialização, você poderá acessar os seguintes serviços:
+
+*   **API REST (AAS):** `http://localhost:8080`
+*   **Servidor OPC UA:** `opc.tcp://localhost:4840` (Conecte com clientes como *UaExpert*)
+*   **Broker MQTT:** `localhost:1883`
+*   **Banco de Dados (Mongo):** `localhost:27017` (Usuário/Senha: devem ser configurados no `.env` ou `docker-compose.yml`)
+
+## Exemplo Genérico de Configuração (`config.json`)
+
+Para que a integração do OPC UA, historização no MongoDB e mapeamento MQTT funcione, você deve configurar o `config.json` (geralmente localizado em `./my-resources/config.json`). Abaixo há um exemplo genérico da configuração do endpoint:
+
+```json
+{
+    "core": {
+        "requestHandlerThreadPoolSize": 2
+    },
+    "endpoints": [
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.http.HttpEndpoint",
+            "port": 8080
+        },
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcuamilo.MiloOpcUaEndpoint",
+            "port": 4840,
+            "serverName": "faaast",
+            "historizingEnabled": true,
+            "historyMongoConnectionString": "mongodb://[USER]:[PASSWORD]@mongodb:27017/?authSource=admin",
+            "historyMongoDatabase": "faaast_history",
+            "historyMongoCollection": "opcua_history",
+            "historyMaxEntries": 10000,
+            "historyMaxAgeDays": 30,
+            "mqttEnabled": true,
+            "mqttBrokerUrl": "tcp://mosquitto:1883",
+            "mqttMappings": [
+                { 
+                    "topic": "seu-topico/exemplo/Dado1", 
+                    "submodelId": "NomeDoSubmodelo", 
+                    "idShort": "Dado1" 
+                },
+                { 
+                    "topic": "seu-topico/exemplo/Dado2", 
+                    "submodelId": "NomeDoSubmodelo", 
+                    "idShort": "Dado2" 
+                }
+            ]
+        }
+    ],
+    "persistence": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.persistence.memory.PersistenceInMemory",
+        "initialModelFile": "/app/resources/SeuModeloAAS.aasx"
+    },
+    "messageBus": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.messagebus.internal.MessageBusInternal"
+    }
+}
 ```
 
-### As Gradle Dependency
-```kotlin
-implementation 'de.fraunhofer.iosb.ilt.faaast.service:starter:1.3.0'
+## Tecnologias Utilizadas
+*   [Java / Spring Boot] - Core do FAAAST-Service
+*   [Eclipse Mosquitto] - Broker MQTT
+*   [MongoDB] - Banco de Dados para historização
+*   [OPC UA] - Protocolo M2M de automação industrial
+*   [Docker] - Containerização
+
+---
+
+## English Version
+
+This project is a customized and extended version of [FAAAST-Service](https://github.com/FraunhoferIOSB/FAAAST-Service) (Fraunhofer IOSB), designed to provide a complete Digital Twins solution focusing on industrial interoperability, real-time communication, and data persistence.
+
+The architecture was adapted to act as a smart gateway, integrating **MQTT** for asynchronous messaging, **OPC UA** for standardized automation and control, and **MongoDB** for historization and time-series storage of simulations and telemetry.
+
+## Key Features and Differentiators
+
+Unlike the original repository, this version introduces the following improvements:
+
+*   **MQTT ↔ OPC UA Gateway:** Configured bi-directional communication. The system can subscribe to MQTT topics and map these messages directly to nodes in the OPC UA server.
+*   **Data Historization (MongoDB):** Integration with a MongoDB database to save the history of events, telemetry, and Digital Twin states, allowing for future analysis and auditing.
+*   **Custom OPC UA Server:** The standard OPC UA server was replaced/optimized to support more complex connections and ensure greater flexibility in exposing *Asset Administration Shell (AAS)* data.
+*   **Distributed Simulation:** Base structure prepared to orchestrate simulations of multiple assets (such as drones or test environments) managed via MQTT and OPC UA simultaneously.
+*   **Fully Dockerized Environment:** Complete orchestration of the environment (Broker, Database, and FAAAST Service) using a single command via `docker-compose`.
+
+## System Architecture
+
+The environment spins up the following interconnected services:
+
+1.  **Mosquitto (MQTT Broker):** Manages asynchronous message traffic (e.g., telemetry, mission waypoints). Operating on port `1883`.
+2.  **MongoDB:** NoSQL database used for persistent historization of AAS information. Operating on port `27017`.
+3.  **FAAAST Service:** The core of the *Asset Administration Shell*. Exposes the REST API and the updated OPC UA server endpoint. Operating on ports `8080` (HTTP) e `4840` (OPC UA).
+
+## How to Run the Project
+
+### Prerequisites
+*   [Docker](https://docs.docker.com/get-docker/)
+*   [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Step by Step
+
+1. Clone this repository:
+   ```bash
+   git clone <YOUR_GIT_URL>
+   cd <YOUR_REPO_NAME>
+   ```
+
+2. Make sure your resource files (`config.json` and `.aasx` files) are placed in the `./my-resources` folder.
+
+3. Start the stack using Docker Compose:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. Check the logs to ensure the gateway and OPC UA server started correctly:
+   ```bash
+   docker-compose logs -f faaast
+   ```
+
+### Available Endpoints
+
+After initialization, you can access the following services:
+
+*   **REST API (AAS):** `http://localhost:8080`
+*   **OPC UA Server:** `opc.tcp://localhost:4840` (Connect with clients like *UaExpert*)
+*   **MQTT Broker:** `localhost:1883`
+*   **Database (Mongo):** `localhost:27017` (User/Password: must be set in `.env` or `docker-compose.yml`)
+
+## Generic Configuration Example (`config.json`)
+
+For the OPC UA integration, MongoDB historization, and MQTT mapping to work, you must set up the `config.json` (usually located in `./my-resources/config.json`). Below is a generic endpoint configuration example:
+
+```json
+{
+    "core": {
+        "requestHandlerThreadPoolSize": 2
+    },
+    "endpoints": [
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.http.HttpEndpoint",
+            "port": 8080
+        },
+        {
+            "@class": "de.fraunhofer.iosb.ilt.faaast.service.endpoint.opcuamilo.MiloOpcUaEndpoint",
+            "port": 4840,
+            "serverName": "faaast",
+            "historizingEnabled": true,
+            "historyMongoConnectionString": "mongodb://[USER]:[PASSWORD]@mongodb:27017/?authSource=admin",
+            "historyMongoDatabase": "faaast_history",
+            "historyMongoCollection": "opcua_history",
+            "historyMaxEntries": 10000,
+            "historyMaxAgeDays": 30,
+            "mqttEnabled": true,
+            "mqttBrokerUrl": "tcp://mosquitto:1883",
+            "mqttMappings": [
+                { 
+                    "topic": "your-topic/example/Data1", 
+                    "submodelId": "SubmodelName", 
+                    "idShort": "Data1" 
+                },
+                { 
+                    "topic": "your-topic/example/Data2", 
+                    "submodelId": "SubmodelName", 
+                    "idShort": "Data2" 
+                }
+            ]
+        }
+    ],
+    "persistence": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.persistence.memory.PersistenceInMemory",
+        "initialModelFile": "/app/resources/YourAASModel.aasx"
+    },
+    "messageBus": {
+        "@class": "de.fraunhofer.iosb.ilt.faaast.service.messagebus.internal.MessageBusInternal"
+    }
+}
 ```
 
-## Building from Source
-
-```sh
-git clone https://github.com/FraunhoferIOSB/FAAAST-Service
-cd FAAAST-Service
-mvn clean install
-```
-
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions are **greatly appreciated**.
-You can find our contribution guidelines [here](CONTRIBUTING.md)
-
-## Contact
-
-faaast@iosb.fraunhofer.de
-
-## License
-
-Distributed under the Apache 2.0 License. See `LICENSE` for more information.
-
-Copyright (C) 2022 Fraunhofer Institut IOSB, Fraunhoferstr. 1, D 76131 Karlsruhe, Germany.
-
-You should have received a copy of the Apache 2.0 License along with this program. If not, see https://www.apache.org/licenses/LICENSE-2.0.html.
+## Technologies Used
+*   [Java / Spring Boot] - FAAAST-Service Core
+*   [Eclipse Mosquitto] - MQTT Broker
+*   [MongoDB] - Database for historization
+*   [OPC UA] - M2M Protocol for industrial automation
+*   [Docker] - Containerization
